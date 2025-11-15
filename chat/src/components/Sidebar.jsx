@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 
 const Sidebar = ({ contacts, activeContact, onContactSelect, currentUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,11 +10,7 @@ const Sidebar = ({ contacts, activeContact, onContactSelect, currentUser }) => {
   return (
     <div className="w-1/4 bg-gray-50 border-r border-gray-200 flex flex-col">
       {/* User Profile */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-4 border-b border-gray-200 flex items-center"
-      >
+      <div className="p-4 border-b border-gray-200 flex items-center">
         <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-3">
           {currentUser?.username?.charAt(0).toUpperCase() || 'U'}
         </div>
@@ -23,15 +18,10 @@ const Sidebar = ({ contacts, activeContact, onContactSelect, currentUser }) => {
           <h3 className="font-semibold text-gray-800">{currentUser?.username || 'User'}</h3>
           <p className="text-sm text-green-600">Online</p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="p-3 border-b border-gray-200"
-      >
+      <div className="p-3 border-b border-gray-200">
         <input
           type="text"
           placeholder="Search contacts..."
@@ -39,16 +29,13 @@ const Sidebar = ({ contacts, activeContact, onContactSelect, currentUser }) => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
-      </motion.div>
+      </div>
 
       {/* Contacts List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {filteredContacts.map((contact, index) => (
-          <motion.div
+        {filteredContacts.map((contact) => (
+          <div
             key={contact._id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
             onClick={() => onContactSelect(contact)}
             className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
               activeContact?._id === contact._id
@@ -65,7 +52,7 @@ const Sidebar = ({ contacts, activeContact, onContactSelect, currentUser }) => {
                 {contact.lastMessage || 'Start a conversation'}
               </p>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

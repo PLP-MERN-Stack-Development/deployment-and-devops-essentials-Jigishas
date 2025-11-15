@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, SignUp, UserButton } from '@clerk/clerk-react';
 import { io } from 'socket.io-client';
 import Sidebar from './components/Sidebar';
@@ -12,16 +12,22 @@ if (!PUBLISHABLE_KEY) {
 }
 
 function ChatApp() {
-  const [contacts, setContacts] = useState([]);
+  const contacts = [
+    { _id: '1', username: 'Alice Smith', lastMessage: 'Hey, are we still meeting tomorrow?' },
+    { _id: '2', username: 'Mike Johnson', lastMessage: 'I sent you the documents' },
+    { _id: '3', username: 'Sarah Williams', lastMessage: 'Thanks for your help!' },
+    { _id: '4', username: 'Robert King', lastMessage: 'See you at the conference' },
+    { _id: '5', username: 'Emma Parker', lastMessage: 'Let\'s catch up soon' }
+  ];
   const [activeContact, setActiveContact] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  const socketRef = useRef(null);
+  const currentUser = { _id: 'current', username: 'John Doe' };
 
   // Initialize Socket.IO connection
   useEffect(() => {
     const newSocket = io('http://localhost:3001');
-    setSocket(newSocket);
+    socketRef.current = newSocket;
 
     newSocket.on('receive-message', (message) => {
       setMessages(prev => [...prev, message]);
@@ -30,21 +36,7 @@ function ChatApp() {
     return () => newSocket.close();
   }, []);
 
-  // Load contacts and user data
-  useEffect(() => {
-    // Mock data for now - replace with API calls later
-    const mockContacts = [
-      { _id: '1', username: 'Alice Smith', lastMessage: 'Hey, are we still meeting tomorrow?' },
-      { _id: '2', username: 'Mike Johnson', lastMessage: 'I sent you the documents' },
-      { _id: '3', username: 'Sarah Williams', lastMessage: 'Thanks for your help!' },
-      { _id: '4', username: 'Robert King', lastMessage: 'See you at the conference' },
-      { _id: '5', username: 'Emma Parker', lastMessage: 'Let\'s catch up soon' }
-    ];
-    setContacts(mockContacts);
 
-    // Mock current user
-    setCurrentUser({ _id: 'current', username: 'John Doe' });
-  }, []);
 
   const handleContactSelect = (contact) => {
     setActiveContact(contact);
@@ -60,7 +52,7 @@ function ChatApp() {
   };
 
   const handleSendMessage = (content) => {
-    if (!activeContact || !socket) return;
+    if (!activeContact || !socketRef.current) return;
 
     const messageData = {
       chatId: activeContact._id,
@@ -68,7 +60,7 @@ function ChatApp() {
       content
     };
 
-    socket.emit('send-message', messageData);
+    socketRef.current.emit('send-message', messageData);
   };
 
   return (

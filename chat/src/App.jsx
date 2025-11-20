@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { ClerkProvider, SignedIn, SignedOut, SignIn, SignUp, UserButton } from '@clerk/clerk-react';
+import { ClerkProvider, SignedIn, SignedOut, SignIn, SignUp, UserButton, useUser } from '@clerk/clerk-react';
 import { io } from 'socket.io-client';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
@@ -12,20 +12,62 @@ if (!PUBLISHABLE_KEY) {
 }
 
 function ChatApp() {
-  const contacts = [
-    { _id: '1', username: 'Alice Smith', lastMessage: 'Hey, are we still meeting tomorrow?' },
-    { _id: '2', username: 'Mike Johnson', lastMessage: 'I sent you the documents' },
-    { _id: '3', username: 'Sarah Williams', lastMessage: 'Thanks for your help!' },
-    { _id: '4', username: 'Robert King', lastMessage: 'See you at the conference' },
-    { _id: '5', username: 'Emma Parker', lastMessage: 'Let\'s catch up soon' }
-  ];
+  const { user } = useUser();
+  const [contacts, setContacts] = useState([]);
   const [activeContact, setActiveContact] = useState(null);
   const [messages, setMessages] = useState([]);
   const socketRef = useRef(null);
-  const currentUser = { _id: 'current', username: 'John Doe' };
 
-  // Initialize Socket.IO connection
+  const currentUser = user ? {
+    _id: user.id,
+    username: user.username || user.firstName || 'User',
+    email: user.primaryEmailAddress?.emailAddress,
+    avatar: user.imageUrl
+  } : null;
+
+  // Fetch messages for active chat
+  const fetchMessages = async (chatId) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`http://localhost:3001/api/chats/${chatId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const messages = await response.json();
+      setMessages(messages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  // Initialize Socket.IO connection and fetch chats when user is available
   useEffect(() => {
+    if (!user) return;
+
+    // Fetch chats from backend
+    const fetchChats = async () => {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('http://localhost:3001/api/chats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const chats = await response.json();
+        setContacts(chats.map(chat => ({
+          _id: chat._id,
+          username: chat.participants.find(p => p._id !== user.id)?.username || 'Unknown',
+          lastMessage: chat.lastMessage?.content || 'Start a conversation',
+          participants: chat.participants
+        })));
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+      }
+    };
+
+    fetchChats();
+
     const newSocket = io('http://localhost:3001');
     socketRef.current = newSocket;
 
@@ -34,29 +76,22 @@ function ChatApp() {
     });
 
     return () => newSocket.close();
-  }, []);
-
-
+  }, [user]);
 
   const handleContactSelect = (contact) => {
     setActiveContact(contact);
-    // Load messages for this contact - replace with API call
-    const mockMessages = [
-      { _id: '1', sender: { _id: '1', username: 'Alice Smith' }, content: 'Hey there! How\'s it going?', timestamp: new Date(Date.now() - 600000) },
-      { _id: '2', sender: { _id: 'current', username: 'John Doe' }, content: 'Hi Alice! I\'m doing great. Just finished the project we were working on.', timestamp: new Date(Date.now() - 540000) },
-      { _id: '3', sender: { _id: '1', username: 'Alice Smith' }, content: 'That\'s awesome! Can you send me the final version?', timestamp: new Date(Date.now() - 480000) },
-      { _id: '4', sender: { _id: 'current', username: 'John Doe' }, content: 'Sure, I\'ll email it to you right now.', timestamp: new Date(Date.now() - 420000) },
-      { _id: '5', sender: { _id: '1', username: 'Alice Smith' }, content: 'Thanks! By the way, are we still meeting tomorrow to discuss the next phase?', timestamp: new Date(Date.now() - 360000) }
-    ];
-    setMessages(mockMessages);
+    fetchMessages(contact._id);
+    if (socketRef.current) {
+      socketRef.current.emit('join-chat', contact._id);
+    }
   };
 
   const handleSendMessage = (content) => {
-    if (!activeContact || !socketRef.current) return;
+    if (!activeContact || !socketRef.current || !user) return;
 
     const messageData = {
       chatId: activeContact._id,
-      senderId: currentUser._id,
+      senderId: user.id,
       content
     };
 
@@ -89,8 +124,7 @@ function App() {
       <SignedOut>
         <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
           <div className="bg-white p-8 rounded-2xl shadow-xl">
-            <SignIn routing="path" path="/sign-in" />
-            <SignUp routing="path" path="/sign-up" />
+            <SignIn />
           </div>
         </div>
       </SignedOut>

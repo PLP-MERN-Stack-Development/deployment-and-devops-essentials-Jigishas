@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const API_BASE_URL = 'https://deployment-and-devops-essentials-jigishas.onrender.com';
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
@@ -29,7 +30,7 @@ function ChatApp() {
   const fetchMessages = async (chatId) => {
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`http://localhost:3001/api/chats/${chatId}/messages`, {
+      const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}/messages`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
